@@ -43,6 +43,7 @@ int number2 = random(0,100);
 int number3 = random(0,100);
 int number4 = random(0,100);
 String myStatus = "";
+const char *myWriteAPIKey = SECRET_WRITE_APIKEY;\
 
 void setup() {
   Serial.begin(115200);      // Initialize serial 
@@ -67,16 +68,10 @@ void loop() {
       WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network. Change this line if using open or WEP network
       Serial.print(".");
       delay(5000);     
-    } 
-    Serial.println("\nConnected.");float h = dht.readHumidity();
-  // Read temperature as Celsius (the default)
-  float t = dht.readTemperature();
-  // Read temperature as Fahrenheit (isFahrenheit = true)
-  float f = dht.readTemperature(true);
-
-
+    }
   }
 
+  
   // set the fields with the values
   ThingSpeak.setField(1, number1);
   ThingSpeak.setField(2, number2);
@@ -115,5 +110,65 @@ void loop() {
   number3 = random(0,100);
   number4 = random(0,100);
   
+  delay(20000); // Wait 20 seconds to update the channel again
+}
+
+
+  float h = dht.readHumidity();
+  // Read temperature as Celsius (the default)
+  float t = dht.readTemperature();
+  // Read temperature as Fahrenheit (isFahrenheit = true)
+  float f = dht.readTemperature(true);
+  // Read temperature and humidity
+  float humidity = dht.readHumidity();
+  float temperatureC = dht.readTemperature();
+  float temperatureF = dht.readTemperature(true);
+
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(h) || isnan(t) || isnan(f)) {
+  // Check if any reads failed
+  if (isnan(humidity) || isnan(temperatureC) || isnan(temperatureF)) {
+    Serial.println(F("Failed to read from DHT sensor!"));
+    return;
+  }
+
+  // Compute heat index in Fahrenheit (the default)
+  float hif = dht.computeHeatIndex(f, h);
+  // Compute heat index in Celsius (isFahreheit = false)
+  float hic = dht.computeHeatIndex(t, h, false);
+
+  // Print temperature and humidity
+  Serial.print(F("Humidity: "));
+  Serial.print(h);
+  Serial.print(humidity);
+  Serial.print(F("%  Temperature: "));
+  Serial.print(t);
+  Serial.print(F("°C "));
+  Serial.print(f);
+  Serial.print(F("°F  Heat index: "));
+  Serial.print(hic);
+  Serial.print(temperatureC);
+  Serial.print(F("°C "));
+  Serial.print(hif);
+  Serial.print(temperatureF);
+  Serial.println(F("°F"));
+
+  // Set fields with the sensor values
+  ThingSpeak.setField(1, temperatureC);
+  ThingSpeak.setField(2, temperatureF);
+  ThingSpeak.setField(3, humidity);
+
+  // Set a status message
+  String myStatus = "Temperature and humidity readings updated";
+  ThingSpeak.setStatus(myStatus);
+
+  // Write to the ThingSpeak channel
+  int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+  if (x == 200) {
+    Serial.println("Channel update successful.");
+  } else {
+    Serial.println("Problem updating channel. HTTP error code " + String(x));
+  }
+
   delay(20000); // Wait 20 seconds to update the channel again
 }
